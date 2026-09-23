@@ -5,31 +5,23 @@
 #include <string>
 using namespace std;
 using namespace boost::multiprecision;
-void funkcija(string s)
+cpp_int funkcija(string s)
 {
     cpp_int maximum = (cpp_int(1) << 256) - 1;
-    // unsigned int maximum=115792089237316195423570985008687907853269984665640564039457584007913129639935;
-    cout<<maximum<<endl;
-    int a=3;
     cpp_int hash=1;
     for(unsigned char c:s)
     {
-        cout<<(int)c<<" ";
-        hash=hash*c+a;
-        cout<<hash<<endl;
+        hash=hash*257+c+1;
+        if(c!='\0')
+            hash*=c;
     }
     int l=to_string(hash).length();
-    cout<<l<<endl;
     cpp_dec_float_100 Hash=cpp_dec_float_100(hash);
     for(int i=0; i<l; i++)
         Hash/=10;
-    cout<<Hash<<endl;
     Hash *= cpp_dec_float_100(maximum);
-    // cpp_int result =cpp_int(Hash);
     hash=cpp_int(Hash);
-    cout<<Hash<<endl;
-    cout<<hash<<endl;
-    cout<<hex<<hash<<endl;
+    return hash;
 }
 int main()
 {
@@ -72,10 +64,10 @@ int main()
                 ifstream fd(filename);
                 if(!fd)
                 {
-                    throw std::runtime_error("Nepavyko atidaryti failo.");
+                    throw std::runtime_error("Nepavyko perskaityti failo.");
                 }
                 getline(fd, eil);
-                funkcija(eil);
+                fr<<hex<<funkcija(eil)<<endl;
 
                 fd.close();
             }
@@ -89,8 +81,9 @@ int main()
         case 2:
         {    
             string s;
-            cin>>s;
-            funkcija(s);
+            getline(cin, s);
+            cout<<s<<endl;
+            fr<<hex<<funkcija(s)<<endl;
             break;
         }
     }
