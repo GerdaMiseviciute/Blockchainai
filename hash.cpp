@@ -67,7 +67,9 @@ int main()
                     throw std::runtime_error("Nepavyko perskaityti failo.");
                 }
                 getline(fd, eil);
-                fr<<hex<<funkcija(eil)<<endl;
+                if (!eil.empty())
+                    fr<<hex<<funkcija(eil)<<endl;
+                else fr<<"Failas tuščias"<<endl;
 
                 fd.close();
             }
@@ -82,8 +84,8 @@ int main()
         {    
             string s;
             getline(cin, s);
-            cout<<s<<endl;
-            fr<<hex<<funkcija(s)<<endl;
+            if (!s.empty())
+                fr<<hex<<funkcija(s)<<endl;
             break;
         }
     }
