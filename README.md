@@ -2,15 +2,19 @@
 
 ![alt text](<Screenshot 2026-09-29 211420.png>)
 
-Kaip matome, "enter" maišos reikšmei įtakos neturi (nes getline nuskaito simbolius IKI enter), tačiau tarpai prieš ar po teksto, taip pat sukeistos raidės stipriai pakeičia galutinę reikšmę
+Kaip matome, simbolis *Enter* maišos reikšmei įtakos neturi, nes naudojama getline funkcija nuskaito simbolius iki eilutės pabaigos, tačiau paties *Enter* simbolio į eilutę neįtraukia. Tuo tarpu tarpai prieš tekstą ar po jo pakeičia įvestį, todėl pasikeičia ir galutinė maišos reikšmė. Taip pat net ir nedidelis simbolių pakeitimas, pavyzdžiui, dviejų raidžių sukeitimas vietomis, lemia visiškai kitokią maišos reikšmę.
 
 ## 2 eksperimentas
 
 ![alt text](<Screenshot 2026-09-29 222513.png>)
 
+Kaip matome, kiekvienu atveju išlaikomas tas pats 64 hex simbolių (256 bitų) formatas.
+
 ## 3 ekperimentas
 
-Rankiniu būdu kelis kartus kviečiant tą patį failą matome, jog maišos reikšmė nekinta. Leidžiant failus A B A seka taip pat išlaikomas determinizmas. 
+Rankiniu būdu kelis kartus apskaičiuojant to paties failo maišos reikšmę, gaunamas tas pats rezultatas. Taip pat, apdorojant failus seka *A → B → A*, pirmojo ir trečiojo skaičiavimo rezultatai sutampa.
+
+Tai parodo, kad maišos funkcija yra *deterministinė*: tai pačiai įvesčiai visada gaunama ta pati maišos reikšmė, nepriklausomai nuo to, kada ir kiek kartų funkcija buvo iškviesta.
 
 ## 4 eksperimentas
 
@@ -60,9 +64,7 @@ Ilgų įvesčių eksperimente kolizijų nerasta, tačiau tai savaime neįrodo ma
 
 ## 6 eksperimentas
 
-Geras lavinos efektas savaime nereiškia, jog hash funkcija yra atspari kolizijoms. Tai yra du skirtingi hash funkcijos požymiai.
-
-Lavinos efektas tikrina, kas atsitinka, kai labai mažai pakeiti įvestį. Tai geriausiai atskleidžia prieš tai buvęs (5) eksperimentas.
+Lavinos efektas tikrina, kas atsitinka, kai labai mažai pakeiti įvestį. 
 
 ![alt text](<Screenshot 2026-09-30 205234.png>)
 
@@ -72,6 +74,12 @@ Lavinos efektas tikrina, kas atsitinka, kai labai mažai pakeiti įvestį. Tai g
 
 ![alt text](image-2.png)
 
+Eksperimento rezultatai leidžia įvertinti, kaip pasklidę išvesties bitų pokyčiai po nedidelio įvesties pakeitimo. Kuo daugiau išvesties bitų pasikeičia, tuo stipresnis stebimas lavinos efektas.
+
+Kadangi šio tyrimo metu bitų skirtumo vidurkis yra apie 50%, lavinos efektas yra pakankamai geras.
+
+Geras lavinos efektas savaime nereiškia, jog hash funkcija yra atspari kolizijoms. Tai yra du skirtingi hash funkcijos požymiai. Atsparumą kolizijoms geriausiai atskleidžia prieš tai buvęs (5) eksperimentas.
+
 ## 7 eksperimentas
 
 Atliktas eksperimentas parodė, kaip druskos (salt) naudojimas keičia galimybę rasti pradinę įvestį, kai kandidato aibė yra nedidelė ir vieša.
@@ -80,4 +88,6 @@ Atliktas eksperimentas parodė, kaip druskos (salt) naudojimas keičia galimybę
 
 Kaip matome, viešos druskos naudojimas sulėtino skaičiavimus. Kadangi druska yra žinoma užpuolikui, ji pati savaime nepadaro mažos kandidatų erdvės neperrenkamos – užpuolikas vis tiek gali apskaičiuoti maišą kiekvienam iš 10 000 kandidatų. Tačiau svarbus skirtumas yra tas, kad skirtingoms druskoms gaunamos skirtingos maišos, todėl anksčiau apskaičiuoto kandidatų → maišų žemėlapio nebegalima tiesiogiai pakartotinai panaudoti kitam taikiniui su kita druska. Taigi druska ypač apsunkina iš anksto apskaičiuotų rezultatų ir didelių paruoštų lentelių naudojimą.
 
-Slapto atsitiktinumo *r* atveju situacija dar labiau pasikeičia. Kol r nežinomas, vien tik pateikta *H(input || r)* reikšmė neleidžia paprastai patikrinti kandidatų, nes nežinoma antra maišos funkcijos įvesties dalis. Atskleidus *r*, galima patikrinti konkretų kandidatą apskaičiuojant *H(candidate || r)* ir palyginant rezultatą su *H(input || r)* reikšme. Šis eksperimentas savaime neįrodo, kad naudojama maišos konstrukcija yra saugi kriptografiniam įsipareigojimui.
+Slapto atsitiktinumo *r* atveju situacija dar labiau pasikeičia. Kol r nežinomas, vien tik pateikta *H(input || r)* reikšmė neleidžia paprastai patikrinti kandidatų, nes nežinoma antra maišos funkcijos įvesties dalis. Atskleidus *r*, galima patikrinti konkretų kandidatą apskaičiuojant *H(candidate || r)* ir palyginant rezultatą su *H(input || r)* reikšme. 
+
+Tai iliustruoja įsipareigojimo (commitment) idėją: pirmiausia paskelbiama maišos reikšmė, o vėliau atskleidžiami duomenys, leidžiantys patikrinti, kam buvo įsipareigota. Tačiau šis eksperimentas savaime neįrodo, kad naudojama maišos konstrukcija saugiai slepia pranešimą arba neleidžia jo vėliau pakeisti.
