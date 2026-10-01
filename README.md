@@ -185,7 +185,7 @@ Kaip matome, SHA-256 funkcija yra spartesnė, tačiau matome ir truputį daugiau
 
 ![alt text](image-4.png)
 
-Kaip matome, lavinos efekta yra truputį geresnis.
+Kaip matome, lavinos efektas yra truputį geresnis.
 
 ## Dirbtinis intelektas padėjo:
 - Suprasti hash funkcijos principą
