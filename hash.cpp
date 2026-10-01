@@ -1,6 +1,7 @@
 #include <iostream>
 #include <boost/multiprecision/cpp_dec_float.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
+#include <openssl/evp.h>
 #include <random>
 #include <fstream>
 #include <chrono>
@@ -18,13 +19,12 @@ using namespace boost::multiprecision;
 const uint64_t SEED = 123456789ULL;
 std::mt19937_64 generatorius(SEED);
 
-string funkcija(string s)
+string originali_funkcija(string s)
 {
     if(s.empty())
     {
         return "Failas yra tuščias";
     }
-        // throw std::runtime_error("Failas tuščias");
     cpp_int maximum = (cpp_int(1) << 256) - 1;
     cpp_int hash=1;
     for(unsigned char c:s)
@@ -41,6 +41,59 @@ string funkcija(string s)
     hash=cpp_int(Hash);
     stringstream ss;
     ss<<hex<<hash;
+    return ss.str();
+}
+string funkcija(const string& s)
+{
+    if (s.empty())
+        return "Failas yra tuščias";
+
+    cpp_int mask = (cpp_int(1) << 256) - 1;
+
+    cpp_int hash = 0x6a09e667f3bcc908ULL;
+
+    for (unsigned char c : s)
+    {
+        hash ^= c;
+
+        hash = (hash * 0x100000001B3ULL) & mask;
+
+        hash ^= hash >> 33;
+        hash = (hash * 0xff51afd7ed558ccdULL) & mask;
+
+        hash ^= hash << 17;
+        hash &= mask;
+
+        hash ^= hash >> 29;
+    }
+
+    hash &= mask;
+
+    stringstream ss;
+    ss << hex << setfill('0') << setw(64) << hash;
+
+    return ss.str();
+}
+string sha256(const string& input)
+{
+    unsigned char hash[EVP_MAX_MD_SIZE];
+    unsigned int hashLength;
+
+    EVP_MD_CTX* ctx = EVP_MD_CTX_new();
+
+    EVP_DigestInit_ex(ctx, EVP_sha256(), nullptr);
+    EVP_DigestUpdate(ctx, input.data(), input.size());
+    EVP_DigestFinal_ex(ctx, hash, &hashLength);
+
+    EVP_MD_CTX_free(ctx);
+
+    stringstream ss;
+
+    for (unsigned int i = 0; i < hashLength; i++)
+    {
+        ss << hex << setw(2) << setfill('0') << (int)hash[i];
+    }
+
     return ss.str();
 }
 struct Istrauka
@@ -91,14 +144,6 @@ struct AtakosRezultatas
 };
 char atsitiktineRaide()
 {
-    // uniform_int_distribution<int> dist(0, 51);
-
-    // int x = dist(gen);
-
-    // if (x < 26)
-    //     return 'A' + x;
-    // else
-    //     return 'a' + (x - 26);
     static const string ALPHABET="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 
     uniform_int_distribution<int> dist(0, ALPHABET.size() - 1);
@@ -205,7 +250,36 @@ Statistika atlikti6Eksperimenta(int ilgis, vector<long long>&histograma)
         double hex = hexSkirtumas(hash1, hash2);
 
         statistika.prideti(bitai, hex);
-        // pridetiIHisto(histograma, bitai);
+        int indeksas;
+        if (bitai < 20)
+            indeksas = 0;
+        else if (bitai < 40)
+            indeksas = 1;
+        else if (bitai < 60)
+            indeksas = 2;
+        else if (bitai < 80)
+            indeksas = 3;
+        else indeksas=4;
+
+        histograma[indeksas]++;
+    }
+    return statistika;
+}
+Statistika atlikti6EksperimentaSuSHA256(int ilgis, vector<long long>&histograma)
+{
+    Statistika statistika;
+    for (int i = 0; i < 25000; i++)
+    {
+        string s1 = generuotiString(ilgis);
+        string s2 = pakeistiVienaSimboli(s1);
+
+        string hash1 = sha256(s1);
+        string hash2 = sha256(s2);
+
+        double bitai = bituSkirtumas(hexToBits(hash1), hexToBits(hash2));
+        double hex = hexSkirtumas(hash1, hash2);
+
+        statistika.prideti(bitai, hex);
         int indeksas;
         if (bitai < 20)
             indeksas = 0;
@@ -227,7 +301,6 @@ void koliziju_sk(int ilgis, map<string, set<string>>hashai, long long &poruKoliz
     {
 
         string a = generuotiString(ilgis);
-        // sugeneruotosIvestys.push_back(a);
         string b = generuotiString(ilgis);
 
         string hashA=funkcija(a);
@@ -235,7 +308,6 @@ void koliziju_sk(int ilgis, map<string, set<string>>hashai, long long &poruKoliz
 
         hashai[hashB].insert(b);
         hashai[hashB].insert(a);
-        // sugeneruotosIvestys.push_back(b);
 
         while (a == b)
             b = generuotiString(ilgis);
@@ -304,12 +376,14 @@ AtakosRezultatas SuViesaDruska(const string& tikslinisHash, const string& viesaD
     rezultatas.laikas=chrono::duration<double>(pabaiga - pradzia).count();
     return rezultatas;
 }
+
 int main()
 {
     SetConsoleCP(CP_UTF8);        // konsolės įvestis → UTF-8
     SetConsoleOutputCP(CP_UTF8);
     ifstream fd("ivestis.txt");
     ofstream fr("isvestis.txt");
+    cout<<sha256("labas")<<endl;
     int choice;
     cout<<"===Meniu==="<<endl;
     cout<<"1. Nuskaityti duomenis is failo"<<endl;
@@ -320,13 +394,14 @@ int main()
     cout<<"6. Atlikti penkta eksperimenta"<<endl;
     cout<<"7. Atlikti sesta eksperimenta"<<endl;
     cout<<"8. Atlikti septinta eksperimenta"<<endl;
+    cout<<"9. Atlikti eksperimenta, skirta palyginti savo sukurta algoritma su standartiniu SHA-256 algoritmu"<<endl;
     while(true)
     {
         try
         {
             cin>>choice;
-            if(cin.fail() || choice<1 || choice>8)
-                throw std::runtime_error("Iveskite skaiciu 1-8: ");
+            if(cin.fail() || choice<1 || choice>9)
+                throw std::runtime_error("Iveskite skaiciu 1-9: ");
 
             cin.ignore(1000, '\n');
             break;
@@ -491,7 +566,7 @@ int main()
         }
         case 5:
         {
-            fr<<"4 eksperimentas"<<endl<<endl;
+            cout<<"4 eksperimentas"<<endl<<endl;
             ifstream fd("konstitucija.txt");
             string eil, visas_tekstas="";
             vector<string>eilutes;
@@ -517,24 +592,22 @@ int main()
             }
             if(istraukos.back().eiluciu_sk!=eilutes.size())
                 istraukos.push_back({eilutes.size(), visas_tekstas});
-            cout<<left<<setw(25)<<"Eilučių skaičius"<<setw(20)<<"Maišos rezultatas"<<endl;
+            fr<<left<<setw(25)<<"Eilučių skaičius"<<setw(20)<<"Maišos rezultatas"<<endl;
             for(size_t i=0; i<istraukos.size(); i++)
             {
-                cout<<left<<setw(25)<<istraukos[i].eiluciu_sk<<setw(20)<<funkcija(istraukos[i].tekstas)<<endl;
+                fr<<left<<setw(25)<<istraukos[i].eiluciu_sk<<setw(20)<<funkcija(istraukos[i].tekstas)<<endl;
             }
 
-            fr<<left<<setw(25)<<"Eilučių skaičius"<<setw(20)<<"Baitai"<<setw(20)<<"Maišos funkcijos trukmė"<<endl;
+            cout<<left<<setw(25)<<"Eilučių skaičius"<<setw(20)<<"Baitai"<<setw(20)<<"Maišos funkcijos trukmė"<<endl;
             for(size_t i=0; i<istraukos.size(); i++)
             {
                 auto pradzia = high_resolution_clock::now();
                 string rezultatas = funkcija(istraukos[i].tekstas);
                 auto pabaiga = high_resolution_clock::now();
                 duration<double> laikas=pabaiga-pradzia;
-                fr<<left<<setw(25)<<istraukos[i].eiluciu_sk<<setw(20)<<istraukos[i].tekstas.size()<<setw(20)<<laikas.count()<<endl;
+                cout<<left<<setw(25)<<istraukos[i].eiluciu_sk<<setw(20)<<istraukos[i].tekstas.size()<<setw(20)<<laikas.count()<<endl;
             }
             break;
-            // cout<<laikas.count()<<endl;
-            // auto laikas = duration<double, std::micro>(pabaiga - pradzia).count();
         }
         case 6:
         {
@@ -606,7 +679,7 @@ int main()
         }
         case 7:
         {
-            fr<<"6 eksperimentas"<<endl<<endl;
+            cout<<"6 eksperimentas"<<endl<<endl;
             vector<Statistika>rezultatai;
             vector<long long>histograma(5, 0);
             vector<int>ilgiai={10, 100, 500, 1000};
@@ -664,6 +737,7 @@ int main()
             cout<<"Min: "<<bendri.hexMin<<"%"<<endl;
             cout<<"Max: "<<bendri.hexMax<<"%"<<endl;
             cout<<"Vidurkis: "<<bendri.hexVidurkis()<<"%"<<endl;
+            break;
         }
         case 8:
         {
@@ -708,6 +782,109 @@ int main()
                     cout<<r1.sutapimai[i]<<endl;
                 cout<<endl;
             }
+            break;
+        }
+        case 9:
+        {
+            ifstream fd("konstitucija.txt");
+            string eil, visas_tekstas="";
+            vector<string>eilutes;
+            while(getline(fd, eil))
+            {
+                visas_tekstas+=eil;
+                visas_tekstas+='\n';
+                eilutes.push_back(eil);
+            }
+
+            vector<Istrauka> istraukos;
+            size_t n=1;
+            while(n<=eilutes.size())
+            {
+                string tekstas="";
+                for(size_t i=0; i<n; i++)
+                {
+                    tekstas+=eilutes[i];
+                    tekstas+='\n';
+                }
+                istraukos.push_back({n, tekstas});
+                n*=2;
+            }
+            if(istraukos.back().eiluciu_sk!=eilutes.size())
+                istraukos.push_back({eilutes.size(), visas_tekstas});
+            fr<<left<<setw(25)<<"Eilučių skaičius"<<setw(20)<<"Maišos rezultatas"<<endl;
+            for(size_t i=0; i<istraukos.size(); i++)
+            {
+                fr<<left<<setw(25)<<istraukos[i].eiluciu_sk<<setw(20)<<sha256(istraukos[i].tekstas)<<endl;
+            }
+
+            cout<<left<<setw(25)<<"Eilučių skaičius"<<setw(20)<<"Baitai"<<setw(20)<<"Maišos funkcijos trukmė"<<endl;
+            for(size_t i=0; i<istraukos.size(); i++)
+            {
+                auto pradzia = high_resolution_clock::now();
+                string rezultatas = funkcija(istraukos[i].tekstas);
+                auto pabaiga = high_resolution_clock::now();
+                duration<double> laikas=pabaiga-pradzia;
+                cout<<left<<setw(25)<<istraukos[i].eiluciu_sk<<setw(20)<<istraukos[i].tekstas.size()<<setw(20)<<laikas.count()<<endl;
+            }
+            cout<<endl;
+            cout<<"6 eksperimentas"<<endl<<endl;
+            vector<Statistika>rezultatai;
+            vector<long long>histograma(5, 0);
+            vector<int>ilgiai={10, 100, 500, 1000};
+            Statistika bendri;
+            for (int ilgis : ilgiai)
+            {
+                Statistika s = atlikti6EksperimentaSuSHA256(ilgis, histograma);
+
+                rezultatai.push_back(s);
+
+                // Sukaupiame bendrus rezultatus
+                bendri.bituMin = min(bendri.bituMin, s.bituMin);
+                bendri.bituMax = max(bendri.bituMax, s.bituMax);
+                bendri.bituSuma += s.bituSuma;
+
+                bendri.hexMin = min(bendri.hexMin, s.hexMin);
+                bendri.hexMax = max(bendri.hexMax, s.hexMax);
+                bendri.hexSuma += s.hexSuma;
+
+                bendri.kiekis += s.kiekis;
+            }
+            cout<<"Skiriasi 0-20% bitų: "<<histograma[0]<<endl;
+            cout<<"Skiriasi 20-40% bitų: "<<histograma[1]<<endl;
+            cout<<"Skiriasi 40-60% bitų: "<<histograma[2]<<endl;
+            cout<<"Skiriasi 60-80% bitų: "<<histograma[3]<<endl;
+            cout<<"Skiriasi 80-100% bitų: "<<histograma[4]<<endl<<endl;
+            cout<<"====================="<<endl;
+            cout<<"REZULTATAI PAGAL ILGI"<<endl;
+            cout<<"====================="<<endl;
+            for(int i=0; i<ilgiai.size(); i++)
+            {
+                cout<<"Ilgis: "<<ilgiai[i]<<endl;
+                cout<<"Bitų skirtumas:"<<endl;
+                cout<<"Min: "<<rezultatai[i].bituMin<<"%"<<endl;
+                cout<<"Max: "<<rezultatai[i].bituMax<<"%"<<endl;
+                cout<<"Vidurkis: "<<rezultatai[i].bituVidurkis()<<"%"<<endl;
+                
+                cout<<"Hex skirtumas:"<<endl;
+                cout<<"Min: "<<rezultatai[i].hexMin<<"%"<<endl;
+                cout<<"Max: "<<rezultatai[i].hexMax<<"%"<<endl;
+                cout<<"Vidurkis: "<<rezultatai[i].hexVidurkis()<<"%"<<endl;
+            }
+
+            cout<<"================="<<endl;
+            cout<<"BENDRI REZULTATAI"<<endl;
+            cout<<"================="<<endl;
+
+            cout<<"Poru skaicius: "<<bendri.kiekis<<endl;
+            cout<<"Bitų skirtumas:"<<endl;
+            cout<<"Min: "<<bendri.bituMin<<"%"<<endl;
+            cout<<"Max: "<<bendri.bituMax<<"%"<<endl;
+            cout<<"Vidurkis: "<<bendri.bituVidurkis()<<"%"<<endl;
+            
+            cout<<"Hex skirtumas:"<<endl;
+            cout<<"Min: "<<bendri.hexMin<<"%"<<endl;
+            cout<<"Max: "<<bendri.hexMax<<"%"<<endl;
+            cout<<"Vidurkis: "<<bendri.hexVidurkis()<<"%"<<endl;
             break;
         }
     }
